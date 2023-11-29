@@ -6,59 +6,18 @@
 import streamlit as st
 import pandas as pd
 
+from config import initialize_session_state_vals
+from update_json import *
+
 import os, json
 
 
 TASK_JSON_PATH : os.path = '../data/tasklist.json'
 
 
-# JSONファイルを辞書に復元
-def restore_dict_from_json(json_file_path : os.path) -> dict:
-    with open(json_file_path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-# セッション変数を初期化
-def initialize_session_state_vals():
-    
-    # JSONからタスクのメタデータとリストを取得してセッション変数に登録
-    if ( "metadata", "tasklist") not in st.session_state :
-        task_dict : dict = restore_dict_from_json(TASK_JSON_PATH)
-        
-        st.session_state.metadata = task_dict["metadata"]
-        st.session_state.tasklist = task_dict["tasklist"]
-    
-
-def delete_task_in_json():
-    pass
-    
-    
-def update_task_json():
-    
-    # JSONファイルを更新するためにセッション変数をまず辞書に格納
-    task_dict = {
-        "metadata" : st.session_state.metadata,
-        "tasklist" : st.session_state.tasklist
-    }
-    
-    # task_dict を保存することにより JSON ファイルを更新
-    with open(TASK_JSON_PATH, "w", encoding="utf-8") as file:
-        json.dump(task_dict, file, indent=2)
-
-
-# 編集された df をもとにセッション変数内のタスクリストを更新
-def update_taskjson_from_edited_df(edited_df):
-    
-    edited_taskdict = edited_df.transpose().to_dict()
-    edited_tasklist = [task for task in edited_taskdict.values()]
-    
-    st.session_state.tasklist = edited_tasklist
-    
-    update_task_json()
-
-
 def main():
     
+    # 初期起動時にセッション変数を初期化
     initialize_session_state_vals()
     
     # タイトル
@@ -69,7 +28,7 @@ def main():
     df = pd.DataFrame(st.session_state.tasklist)
     edited_df = st.data_editor(
         df,
-        column_order=("name", "discription", "deadline", "_index"),
+        column_order=("name", "discription", "deadline", "is_checked"),
         column_config={
             "name" : st.column_config.Column(
                 "タスク名",
@@ -83,13 +42,14 @@ def main():
                 "締め切り",
                 width="medium"
             ),
-            "_index" : st.column_config.CheckboxColumn(
+            "is_checked" : st.column_config.CheckboxColumn(
                 "選択",
                 width="small",
                 disabled=False,
                 default=False,
-            ) 
+            )
         },
+        hide_index=True
     )
     
     # 見栄えのためにボタンを配置する列を作成
@@ -102,7 +62,7 @@ def main():
         
     # 選択したタスクを削除した場合は JSON ファイルを更新
     if is_deleted :
-        delete_task_in_json()
+        delete_task_in_json_from_edited_df(edited_df)
         st.warning("削除完了しました.")
         
     # 編集された場合は JSON ファイルを更新
@@ -122,6 +82,7 @@ def main():
         task_name   = st.text_input("タスク名", placeholder="例）風呂掃除")
         discription = st.text_area("タスクの説明", placeholder="例）お風呂を掃除する")
         deadline    = st.date_input("タスクの期限")
+        is_checked  = False # チェックボックス記入のために保持
         
         # 追加ボタン
         is_submitted = st.form_submit_button("追加")
@@ -133,6 +94,7 @@ def main():
                 "name"        : f"{task_name}",
                 "discription" : f"{discription}",
                 "deadline"    : f"{pd.to_datetime(deadline)}",
+                "is_checked"  : f"{is_checked}"
             }
             
             # セッション変数中のタスクリストの最後尾にタスクを追加
