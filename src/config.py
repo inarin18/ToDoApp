@@ -1,3 +1,10 @@
+#
+# streamlit の設定に関する関数を集めたファイル
+#
+# usage : from config import *
+#
+
+
 import streamlit as st
 
 import json, os
