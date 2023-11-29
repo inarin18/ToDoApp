@@ -34,6 +34,10 @@ def delete_task_in_json_from_edited_df(edited_df):
         if edited_task["is_checked"] :
             del edited_tasklist[idx]
     
+    # 削除が完了したら明示的にチェックボックスの値を False に
+    for edited_task in edited_tasklist :
+        edited_task["is_checked"] = False
+     
     st.session_state.tasklist = edited_tasklist
     
     update_task_json()
